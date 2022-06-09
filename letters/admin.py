@@ -9,9 +9,11 @@ from django.contrib.admin.widgets import AutocompleteSelectMultiple
 from django.db.models import Q, F
 from django.forms import CheckboxSelectMultiple, TextInput, Textarea
 
-from .catadmin import *
 from django.utils.safestring import mark_safe
 from rangefilter.filters import DateRangeFilter
+from .admin_cats import *
+from .admin_ctrp import *
+
 
 admin.site.site_title = 'EWNC Переписка'
 admin.site.site_header = 'EWNC Переписка'
@@ -34,7 +36,6 @@ class OutDueFilter(SimpleListFilter):
         return None
 
     def queryset(self, request, queryset):
-        print('\n\t\t\t!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         print(queryset)
         if self.value() == 'y':
             return self.get_y_qs()
@@ -50,20 +51,32 @@ class BaseCompletedFilter(SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value() == 'y':
-            # qs = BaseLetter.objects.filter(Q(level=0) & Q(completed=1))  # Версия для случая, когда завершенной отмечаются отдельные письма, а не цепочка целиком
-            # result = copy(qs)
-            # for r in qs:
-            #     result = result | r.get_descendants()
             result = BaseLetter.objects.filter(completed=1)
             return result
 
         if self.value() == 'n':
-            # qs = BaseLetter.objects.filter(Q(level=0) & Q(completed=0))  # Версия для случая, когда завершенной отмечаются отдельные письма, а не цепочка целиком
-            # result = copy(qs)
-            # for r in qs:
-            #     result = result | r.get_descendants()
             result = BaseLetter.objects.filter(completed=0)
             return result
+
+
+class BaseYearsFilter(SimpleListFilter):
+    """ Фильтрует завершенные письма"""
+    title = 'По годам'
+    parameter_name = 'years'
+
+    def lookups(self, request, model_admin):
+        curr_year = datetime.datetime.now().year
+        years = [(y, y) for y in range(curr_year, 2018, -1)]
+        return years
+
+    def queryset(self, request, queryset):
+
+        print(self.value(), type(self.value()))
+        if self.value():
+            result = BaseLetter.objects.filter(Q(sign_date__gte=f'{self.value()}-01-01') & Q(sign_date__lte=f'{self.value()}-12-31'))
+            return result
+
+
 
 
 class OutCompletedFilter(SimpleListFilter):
@@ -157,7 +170,7 @@ class AbstractLetterAdmin(MPTTModelAdmin):
 @admin.register(BaseLetter)
 class BaseLetterAdmin(AbstractLetterAdmin):
     # list_display = ("type", "number", "sign_date", "counterparty", "subj")
-    list_filter = (BaseCompletedFilter, OutInactionFilter, OutDueFilter, ('sign_date', DateRangeFilter))
+    list_filter = (BaseCompletedFilter, OutInactionFilter, OutDueFilter, BaseYearsFilter, ('sign_date', DateRangeFilter))
 
     def has_add_permission(self, request):
         return False
@@ -192,3 +205,14 @@ class IncomingLetterAdmin(AbstractLetterAdmin):
         return 'type', 'executor', 'pagemaker_file', 'inbound_number', 'inaction', 'send_date',
 
 
+@admin.register(OmittedRedirect)
+class OmittedRedirectAdmin(AbstractLetterAdmin):
+    mptt_level_indent = 0
+    list_filter = (InCompletedFilter, ('sign_date', DateRangeFilter))
+    autocomplete_fields = ()
+
+    def get_queryset(self, request):
+        return BaseLetter.objects.filter(type=3)
+
+    def get_exclude(self, request, obj=None):
+        return 'type', 'executor', 'pagemaker_file', 'inbound_number', 'inaction', 'send_date',

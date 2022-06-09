@@ -34,9 +34,6 @@ class AbstractInline(admin.TabularInline):
         abstract = True
 
 
-
-
-
 class GeoInline(AbstractInline):
     model = GeoTag
 
@@ -97,27 +94,10 @@ class WaterObjAdmin(AbsMultiCatAdmin):
     inlines = (WaterObjInline, WaterObjLettersInline)
 
 
-class CounterpartyInline(AbstractInline):
-    model = Counterparty
-
-
-class CounterpartyObjLettersInline(AbstractInline):
-    model = BaseLetter
-    fk_name = 'counterparty'
-    verbose_name_plural = 'Переписка с данным контрагентом'
-    fields = ('number', 'sign_date', 'subj', )
-
-
-@admin.register(Counterparty)
-class CounterpartyAdmin(AbsMultiCatAdmin):
-    inlines = (CounterpartyInline, CounterpartyObjLettersInline)
-
-
 class CadNumLettersInline(AbstractInline):
     model = BaseLetter.cad_num.through
     fk_name = None
     verbose_name_plural = 'Письма, относящиеся к данному участку'
-
 
 
 @admin.register(CadNum)

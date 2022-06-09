@@ -1,4 +1,5 @@
 import datetime
+import re
 
 from django.db.models import Q
 from django.shortcuts import render, HttpResponse, redirect
@@ -65,13 +66,9 @@ def get_delivery(name):
 
 
 def myscript(request):
-
     book = openpyxl.load_workbook('in.xlsx')
     sheet = book.worksheets[1]
-
     log = []
-    executors = []
-
     for row in sheet.values:
         _, date, number, reply_to, out_num, counerparty, subj, signed_by, contact, delivery, recv_date, __, ___, ____, cipher, *_____ = row
         if isinstance(reply_to, str) and (reply_to.strip().startswith('2/') or reply_to.strip().startswith('3/')):
@@ -103,6 +100,37 @@ def myscript(request):
                 print(f"----{ex}")
             print()
 
-
     result = log
     return HttpResponse(result)
+
+
+
+def get_org(name):
+    name = name.strip()
+    if not Organization.objects.filter(name=name).exists():
+        Organization.objects.create(name=name)
+    return Organization.objects.get(name=name)
+
+
+def get_pos(name, org):
+    name = name.strip()
+    if not Position.objects.filter(Q(name=name) & Q(parent=org)).exists():
+        Position.objects.create(name=name, parent=org)
+    return Position.objects.get(Q(name=name) & Q(parent=org))
+
+
+
+def myscript(request):
+    return None
+    """ Создание категорий и подкатегорий контрагентов"""
+    rns = ['Белореченское г.п.', 'Бжедуховское с.п.', 'Великовечненское с.п.', 'Дружненское с.п.', 'Первомайское с.п.', 'Пшехское с.п.', 'Родниковское с.п.', 'Рязанское с.п.', 'Черниговское с.п.', 'Школьненское с.п.', 'Южненское с.п.']
+
+
+    for r in rns:
+        region = GeoTag.objects.get(name__startswith='Белореченский')
+
+        GeoTag.objects.create(name=r, parent=region)
+
+    context = {'stuff': GeoTag.objects.all(), 'message': ''}
+    return render(request, template_name='letters/index.html', context=context)
+

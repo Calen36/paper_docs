@@ -43,7 +43,7 @@ class CadNum(models.Model):
 
 class BaseHierarchicalProperty(MPTTModel):
     """Абстрактный класс для создания иерархически вложенных атрибутов писем"""
-    name = models.CharField(max_length=255, unique=True, verbose_name='Название')
+    name = models.CharField(max_length=255, verbose_name='Название')
     parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name='Относится к категории')
 
     def __str__(self):
@@ -65,12 +65,6 @@ class Thematics(BaseHierarchicalProperty):
     class Meta:
         verbose_name = 'Тематика'
         verbose_name_plural = ' Тематики'
-
-
-class Counterparty(BaseHierarchicalProperty):
-    class Meta:
-        verbose_name = 'Контрагент'
-        verbose_name_plural = 'Контрагенты'
 
 
 class Forestry(BaseHierarchicalProperty):

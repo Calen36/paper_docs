@@ -1,4 +1,5 @@
-from .catmodels import *
+from .models_cats import *
+from .models_ctrp import *
 from django.utils.safestring import mark_safe
 
 
@@ -39,7 +40,7 @@ class BaseLetter(MPTTModel):
 
     class Meta:
         verbose_name = 'Письмо'
-        verbose_name_plural = '    Все письма'
+        verbose_name_plural = '        Все письма'
 
     def get_full_name(self):
         if self.type:
@@ -83,11 +84,9 @@ class OutEcoLetter(BaseLetter):
     class Meta:
         proxy = True
         verbose_name = 'Исходящее письмо (экология)'
-        verbose_name_plural = '   Исходящие письма (экология)'
+        verbose_name_plural = f'       {my_indent}📨 Исходящие (эко)'
 
     def save(self, *args, **kwargs):
-        print("\t\t\t\t\t!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
         self.type = LetterType.objects.get(pk=2)
         super(OutEcoLetter, self).save()
 
@@ -97,10 +96,22 @@ class IncomingLetter(BaseLetter):
     class Meta:
         proxy = True
         verbose_name = 'Входящее письмо'
-        verbose_name_plural = '   Входящие письма'
+        verbose_name_plural = f'       {my_indent}📩 Входящие'
 
     def save(self, *args, **kwargs):
         self.type = LetterType.objects.get(pk=1)
+        super(IncomingLetter, self).save()
+
+
+class OmittedRedirect(BaseLetter):
+    """ Неприсланное перенаправление """
+    class Meta:
+        proxy = True
+        verbose_name = 'Неприсланный пересыл'
+        verbose_name_plural = f'       {my_indent}🗰 Перенаправление'
+
+    def save(self, *args, **kwargs):
+        self.type = LetterType.objects.get(pk=3)
         super(IncomingLetter, self).save()
 
 
