@@ -4,6 +4,7 @@ from mptt.models import MPTTModel, TreeForeignKey, TreeManyToManyField, TreeMana
 
 my_indent = "   "
 
+
 class CounterpartyType(models.Model):
     index = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=127)
@@ -80,7 +81,6 @@ class Position(Counterparty):
 
 
 class Person(Counterparty):
-
     class Meta:
         proxy = True
         verbose_name = 'должностное лицо'
@@ -97,5 +97,6 @@ class Person(Counterparty):
         return f'🠶 {self.name}'
 
     get_full_name.short_description = 'Должностные лица'
+
 
 

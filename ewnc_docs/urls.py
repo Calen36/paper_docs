@@ -15,9 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.shortcuts import HttpResponse, redirect
-from django.urls import path
+from django.urls import path, include
 from django.conf.urls.static import static
-from letters.views import get_extended_letter_url, myscript
+
+import letters.admin
+from letters.views import get_extended_letter_url, myscript, show_family
 from ewnc_docs import settings
 
 
@@ -25,7 +27,8 @@ urlpatterns = [
     path('exec', myscript),
     path('admin/letters/baseletter/<path:tail>', get_extended_letter_url),
     path('admin/', admin.site.urls),
-    path('', lambda _: redirect("admin/"))
+    path('family/<int:pk>', show_family),
+    path('', lambda _: redirect("admin/")),
 ]
 
 

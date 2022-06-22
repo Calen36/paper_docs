@@ -77,8 +77,6 @@ class BaseYearsFilter(SimpleListFilter):
             return result
 
 
-
-
 class OutCompletedFilter(SimpleListFilter):
     """ Фильтрует завершенные письма"""
     title = 'Завершено'
@@ -135,7 +133,7 @@ class OutInactionFilter(SimpleListFilter):
             return self.get_y_qs()
 
 
-class LetterInline(AbstractInline):
+class LetterInline(AbstractInline):  # TODO нужность под вопросом
     model = BaseLetter
     fields = ('number', 'sign_date', 'counterparty', 'subj', )
     verbose_name_plural = 'Ответы'
@@ -146,7 +144,7 @@ class AbstractLetterAdmin(MPTTModelAdmin):
     list_display = ('get_full_name',)
     # list_display = ("number", "sign_date", "counterparty", "subj")
     search_fields = ('counterparty__name', 'number', 'subj', 'cipher')
-    inlines = (AttachmentInline, LetterInline,)
+    inlines = (AttachmentInline,)
     mptt_level_indent = 40
     save_on_top = True
 
@@ -161,6 +159,14 @@ class AbstractLetterAdmin(MPTTModelAdmin):
     class Meta:
         abstract = True
 
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['object_id'] = int(object_id)
+        extra_context['family'] = BaseLetter.objects.get(pk=object_id).get_root().get_descendants(include_self=True)
+        return super(AbstractLetterAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,
+        )
+
     class Media:
         css = {
             'all': ('mystyles.css',)
@@ -169,6 +175,7 @@ class AbstractLetterAdmin(MPTTModelAdmin):
 
 @admin.register(BaseLetter)
 class BaseLetterAdmin(AbstractLetterAdmin):
+
     # list_display = ("type", "number", "sign_date", "counterparty", "subj")
     list_filter = (BaseCompletedFilter, OutInactionFilter, OutDueFilter, BaseYearsFilter, ('sign_date', DateRangeFilter))
 

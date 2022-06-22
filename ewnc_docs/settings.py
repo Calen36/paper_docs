@@ -38,9 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'letters.apps.LettersConfig',
-    'mptt',
-    'rangefilter',
-
+    'mptt',  # иерархичесикие модели
+    'rangefilter',  # фильтр для моделей - диапазон дат
 ]
 
 MIDDLEWARE = [

@@ -1,14 +1,30 @@
-{% if message %}
-    <h4>{{ message }}</h4>
-{% else %}
-    <p>no message</p>
-{% endif %}
-{% if stuff %}
-    <ul>
-    {% for thing in stuff %}
-        <p>{{ thing }}</p>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>no list data</p>
-{% endif %}
+
+{% load mptt_tags %}
+
+<ul class="root">
+    {% recursetree stuff %}
+        <li>
+            {{ node }}
+            {% if not node.is_leaf_node %}
+                <ul class="children">
+                    {{ children }}
+                </ul>
+            {% endif %}
+        </li>
+    {% endrecursetree %}
+</ul>
+
+<!--{% if message %}-->
+<!--    <h4>{{ message }}</h4>-->
+<!--{% else %}-->
+<!--    <p>no message</p>-->
+<!--{% endif %}-->
+<!--{% if stuff %}-->
+<!--    <ul>-->
+<!--    {% for thing in stuff %}-->
+<!--        <p>{{ thing }}</p>-->
+<!--    {% endfor %}-->
+<!--    </ul>-->
+<!--{% else %}-->
+<!--    <p>no list data</p>-->
+<!--{% endif %}-->

@@ -10,7 +10,7 @@ def get_upload_path(instance, filename):
 class BaseLetter(MPTTModel):
     type = models.ForeignKey('LetterType', on_delete=models.CASCADE, blank=True, null=True, )
     parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name='Ответ на')
-    number = models.CharField(max_length=64, unique=True, verbose_name='Номер', primary_key=True)
+    number = models.CharField(max_length=64, unique=True, verbose_name='Номер')
     counterparty = TreeForeignKey('Counterparty', on_delete=models.CASCADE, verbose_name='Контрагент')
     subj = models.TextField(null=True, blank=True, verbose_name='Тема письма')
     sign_date = models.DateField(verbose_name='Дата письма')
@@ -53,13 +53,18 @@ class BaseLetter(MPTTModel):
 
     get_full_name.short_description = 'Письма'
 
+
+    def get_link_name(self):
+        return mark_safe(f"<a href={self.get_extension_url()}>{self.get_full_name()}</a>")
+
+
     def __str__(self):
         if self.type:
             return self.get_full_name()
         return self.number
 
     def get_extension_url(self):
-        url = f"/admin/letters/{self.type.url}/{self.number}"
+        url = f"/admin/letters/{self.type.url}/{self.pk}"
         return url
 
     class MPTTMeta:
@@ -141,3 +146,4 @@ class Attachment(models.Model):
     class Meta:
         verbose_name = 'Прикрепленный документ'
         verbose_name_plural = 'Прикрепленные документы'
+
