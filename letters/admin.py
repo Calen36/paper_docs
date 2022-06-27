@@ -162,10 +162,10 @@ class AbstractLetterAdmin(MPTTModelAdmin):
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
         extra_context['object_id'] = int(object_id)
-        extra_context['family'] = BaseLetter.objects.get(pk=object_id).get_root().get_descendants(include_self=True)
+        extra_context['letters_title'] = 'ЛИНИЯ ПЕРЕПИСКИ'
+        extra_context['letters'] = BaseLetter.objects.get(pk=object_id).get_root().get_descendants(include_self=True)
         return super(AbstractLetterAdmin, self).change_view(
-            request, object_id, form_url, extra_context=extra_context,
-        )
+            request, object_id, form_url, extra_context=extra_context,)
 
     class Media:
         css = {
@@ -182,6 +182,10 @@ class BaseLetterAdmin(AbstractLetterAdmin):
     def has_add_permission(self, request):
         return False
 
+    def get_queryset(self, request):
+        return BaseLetter.objects.select_related('type', 'counterparty')
+
+
     # def has_delete_permission(self, request, obj=None):
     #     return False
 
@@ -194,7 +198,7 @@ class OutEcoLetterAdmin(AbstractLetterAdmin):
     list_filter = (OutCompletedFilter, OutInactionFilter, OutDueFilter, ('sign_date', DateRangeFilter))
 
     def get_queryset(self, request):
-        return BaseLetter.objects.filter(type=2)
+        return BaseLetter.objects.filter(type=2).select_related('type', 'counterparty')
 
     def get_exclude(self, request, obj=None):
         return 'type', 'outgoing_number', 'signed_by', 'contact', 'tiff_file', 'receive_date',
@@ -206,7 +210,7 @@ class IncomingLetterAdmin(AbstractLetterAdmin):
     list_filter = (InCompletedFilter, ('sign_date', DateRangeFilter))
 
     def get_queryset(self, request):
-        return BaseLetter.objects.filter(type=1)
+        return BaseLetter.objects.filter(type=1).select_related('type', 'counterparty')
 
     def get_exclude(self, request, obj=None):
         return 'type', 'executor', 'pagemaker_file', 'inbound_number', 'inaction', 'send_date',
@@ -216,10 +220,10 @@ class IncomingLetterAdmin(AbstractLetterAdmin):
 class OmittedRedirectAdmin(AbstractLetterAdmin):
     mptt_level_indent = 0
     list_filter = (InCompletedFilter, ('sign_date', DateRangeFilter))
-    autocomplete_fields = ()
 
     def get_queryset(self, request):
-        return BaseLetter.objects.filter(type=3)
+        return BaseLetter.objects.filter(type=3).select_related('type', 'counterparty')
 
     def get_exclude(self, request, obj=None):
-        return 'type', 'executor', 'pagemaker_file', 'inbound_number', 'inaction', 'send_date',
+        return 'type', 'subj', 'sign_date', 'way_of_delivery', 'executor', 'inbound_number', 'outgoing_number', 'signed_by', 'contact', 'receive_date', 'send_date', 'thematics', 'geotag', 'cad_num', 'forestry', 'waterobj', 'cipher', 'tiff_file', 'pdf_file', 'pagemaker_file', 'completed', 'inaction',
+

@@ -19,16 +19,18 @@ from django.urls import path, include
 from django.conf.urls.static import static
 
 import letters.admin
-from letters.views import get_extended_letter_url, myscript, show_family
+from letters.views import *
 from ewnc_docs import settings
 
 
 urlpatterns = [
     path('exec', myscript),
     path('admin/letters/baseletter/<path:tail>', get_extended_letter_url),
+    path('admin/letters/counterparty/<path:tail>', get_extended_ctrp_url),
     path('admin/', admin.site.urls),
-    path('family/<int:pk>', show_family),
     path('', lambda _: redirect("admin/")),
+    path('__debug__/', include('debug_toolbar.urls')),
+
 ]
 
 

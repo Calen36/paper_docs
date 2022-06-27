@@ -53,11 +53,6 @@ class BaseLetter(MPTTModel):
 
     get_full_name.short_description = 'Письма'
 
-
-    def get_link_name(self):
-        return mark_safe(f"<a href={self.get_extension_url()}>{self.get_full_name()}</a>")
-
-
     def __str__(self):
         if self.type:
             return self.get_full_name()
@@ -66,6 +61,9 @@ class BaseLetter(MPTTModel):
     def get_extension_url(self):
         url = f"/admin/letters/{self.type.url}/{self.pk}"
         return url
+
+    def get_link_name(self):
+        return mark_safe(f"<a href={self.get_extension_url()}>{self.get_full_name()}</a>")
 
     class MPTTMeta:
         order_insertion_by = ['-sign_date']

@@ -1,0 +1,24 @@
+.treeline, .treeline ul, .treeline li {
+   margin: 0 !important; padding: 0; line-height: 1.6; list-style: none;
+}
+.treeline ul {margin: 0 0 0 15px ; /* отступ вертикальной линии */}
+.treeline > li:not(:only-child), .treeline li li {
+   position: relative;
+   padding: 3px 0 0 20px; /* отступ текста */
+}
+/* Стиль вертикальной линии */
+.treeline li:not(:last-child) { border-left: 2px solid #ccc; margin-left : 7px !important;}
+/* Стили горизонтальной линии*/
+.treeline li li:before, .treeline > li:not(:only-child):before {
+   content: ""; position: absolute; top: 0; left: 0;
+   width: 1.1em; height: .9em; border-bottom:2px solid #ccc;
+}
+/* Вертикальная линия последнего пункта в списка */
+.treeline li:last-child:before {
+   width: calc(1.2em - 1px); border-left: 2px solid #ccc;
+}
+
+.treeline li:last-child {
+    margin-left : 7px !important;
+
+}

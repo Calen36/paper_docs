@@ -19,7 +19,9 @@ class AbstractInline(admin.TabularInline):
     fk_name = 'parent'
     extra = 0
     verbose_name_plural = 'Подкатегории'
-    show_change_link = True
+    readonly_fields = ('get_link_name',)
+    fields = ('get_link_name',)
+    # show_change_link = True
 
     def has_add_permission(*args, **kwargs):
         return False
@@ -38,102 +40,132 @@ class GeoInline(AbstractInline):
     model = GeoTag
 
 
-class GeoLettersInline(AbstractInline):
-    model = BaseLetter.geotag.through
-    fk_name = 'geotag'
-    verbose_name_plural = 'Письма, относящиеся к данной локации'
-
-
 @admin.register(GeoTag)
 class GeoTagAdmin(AbsMultiCatAdmin):
-    inlines = (GeoInline, GeoLettersInline)
+    inlines = (GeoInline,)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['object_id'] = int(object_id)
+        extra_context['letters_title'] = 'ПИСЬМА, СВЯЗАННЫЕ С ДАННОЙ ЛОКАЦИЕЙ'
+        letters = BaseLetter.objects.none()
+        geotags = GeoTag.objects.get(pk=object_id).get_descendants(include_self=True)
+        for gt in geotags:
+            letters |= BaseLetter.objects.filter(geotag=gt)
+        extra_context['letters'] = letters.distinct()
+        return super(GeoTagAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
 
 
 class ThematicsInline(AbstractInline):
     model = Thematics
-
-
-class ThematicsLettersInline(AbstractInline):
-    model = BaseLetter.thematics.through
-    fk_name = 'thematics'
-    verbose_name_plural = 'Письма по данной тематике'
+    verbose_name_plural = 'Подтемы'
 
 
 @admin.register(Thematics)
 class ThematicsAdmin(AbsMultiCatAdmin):
-    inlines = (ThematicsInline, ThematicsLettersInline)
+    inlines = (ThematicsInline,)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['object_id'] = int(object_id)
+        extra_context['letters_title'] = 'ПИСЬМА ПО ДАННОЙ ТЕМАТИКЕ'
+        themes = Thematics.objects.get(pk=object_id).get_descendants(include_self=True)
+        letters = BaseLetter.objects.none()
+        for t in themes:
+            letters |= BaseLetter.objects.filter(thematics=t)
+        extra_context['letters'] = letters.distinct()
+        return super(ThematicsAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
 
 
 class ForestryInline(AbstractInline):
     model = Forestry
 
 
-class ForestryLettersInline(AbstractInline):
-    model = BaseLetter.forestry.through
-    fk_name = 'forestry'
-    verbose_name_plural = 'Письма, относящиеся к данному объекту'
-
-
 @admin.register(Forestry)
 class ForestryAdmin(AbsMultiCatAdmin):
-    inlines = (ForestryInline, ForestryLettersInline)
+    inlines = (ForestryInline,)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['object_id'] = int(object_id)
+        extra_context['letters_title'] = 'ПИСЬМА, ОТНОСЯЩИЕСЯ К ДАННОМУ ОБЪЕКТУ ЛЕСНОГО ФОНДА'
+        forest_objects = Forestry.objects.get(pk=object_id).get_descendants(include_self=True)
+        letters = BaseLetter.objects.none()
+        for f in forest_objects:
+            letters |= BaseLetter.objects.filter(forestry=f)
+        extra_context['letters'] = letters.distinct()
+        return super(ForestryAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
 
 
 class WaterObjInline(AbstractInline):
     model = WaterObj
 
 
-class WaterObjLettersInline(AbstractInline):
-    model = BaseLetter.waterobj.through
-    fk_name = 'waterobj'
-    verbose_name_plural = 'Письма, относящиеся к данному объекту'
-
-
 @admin.register(WaterObj)
 class WaterObjAdmin(AbsMultiCatAdmin):
-    inlines = (WaterObjInline, WaterObjLettersInline)
+    inlines = (WaterObjInline,)
 
-
-class CadNumLettersInline(AbstractInline):
-    model = BaseLetter.cad_num.through
-    fk_name = None
-    verbose_name_plural = 'Письма, относящиеся к данному участку'
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['object_id'] = int(object_id)
+        extra_context['letters_title'] = 'ПИСЬМА, ОТНОСЯЩИЕСЯ К ДАННОМУ ВОДНОМУ ОБЪЕКТУ'
+        water_objects = WaterObj.objects.get(pk=object_id).get_descendants(include_self=True)
+        letters = BaseLetter.objects.none()
+        for wo in water_objects:
+            letters |= BaseLetter.objects.filter(waterobj=wo)
+        extra_context['letters'] = letters.distinct()
+        return super(WaterObjAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
 
 
 @admin.register(CadNum)
 class CadNumAdmin(admin.ModelAdmin):
     search_fields = ('name',)
-    inlines = (CadNumLettersInline,)
 
     def get_actions(self, request):
         return []
 
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['object_id'] = int(object_id)
+        extra_context['letters_title'] = 'ПИСЬМА, ОТНОСЯЩИЕСЯ К ДАННОМУ КАДАСТРОВОМУ НОМЕРУ'
+        cad_num = CadNum.objects.get(pk=object_id)
+        letters = BaseLetter.objects.filter(cad_num=cad_num)
+        extra_context['letters'] = letters
+        return super(CadNumAdmin, self).change_view(
+            request, object_id, form_url, extra_context=extra_context,)
 
-class WayOfDeliveryLettersInline(AbstractInline):
-    model = BaseLetter
-    fk_name = None
-    verbose_name_plural = 'Письма, доставленные выбранным способом'
-    fields = ('number', 'sign_date', 'counterparty', 'subj')
+
+# class WayOfDeliveryLettersInline(AbstractInline):
+#     model = BaseLetter
+#     fk_name = None
+#     verbose_name_plural = 'Письма, доставленные выбранным способом'
+#     fields = ('number', 'sign_date', 'counterparty', 'subj')
 
 
 @admin.register(WayOfDelivery)
 class WayOfDeliveryAdmin(admin.ModelAdmin):
-    inlines = (WayOfDeliveryLettersInline,)
+    # inlines = (WayOfDeliveryLettersInline,)
 
     def get_actions(self, request):
         return []
 
 
-class ExecutorLettersInline(AbstractInline):
-    model = BaseLetter.executor.through
-    fk_name = None
-    verbose_name_plural = 'Письма, подписанные выбранным исполнителем'
+# class ExecutorLettersInline(AbstractInline):
+#     model = BaseLetter.executor.through
+#     fk_name = None
+#     verbose_name_plural = 'Письма, подписанные выбранным исполнителем'
+#     readonly_fields = ()
+#     fields = ('name',)
 
 
 @admin.register(Executor)
 class ExecutorAdmin(admin.ModelAdmin):
     search_fields = ('surname', 'name', 'patronimic')
-    inlines = (ExecutorLettersInline,)
+    # inlines = (ExecutorLettersInline,)
     list_per_page = 50
 
     def get_actions(self, request):
@@ -144,11 +176,6 @@ class ExecutorAdmin(admin.ModelAdmin):
 class LetterTypeAdmin(admin.ModelAdmin):
     def get_actions(self, request):
         return []
-
-
-# @admin.register(Attachment)
-# class AttachmentAdmin(admin.ModelAdmin):
-#     pass
 
 
 class AttachmentInline(admin.TabularInline):

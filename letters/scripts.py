@@ -1,16 +1,13 @@
 import datetime
+import re
 import sqlite3
+from copy import copy
+from collections import Counter
 
 from django.db.models import Q
 from django.shortcuts import render, HttpResponse, redirect
 from letters.models import *
 import openpyxl
-
-def get_extended_letter_url(request, tail):
-    pk = tail.replace('/change/', '').replace('_2F', '/')
-    object = BaseLetter.objects.get(pk=pk)
-    # return HttpResponse(f"{pk}")
-    return redirect(object.get_extension_url())
 
 
 def get_type():
@@ -103,7 +100,6 @@ def myscript(request):
     return HttpResponse(result)
 
 
-
 def get_org(name):
     name = name.strip()
     if not Organization.objects.filter(name=name).exists():
@@ -125,29 +121,151 @@ def get_geotag(name, parent):
     return GeoTag.objects.get(Q(name=name) & Q(parent=parent))
 
 
-
 def myscript(request):
-    with sqlite3.connect('old.sqlite3') as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT number, subj, sign_date, inbound_number, signed_by, contact, receive_date, send_date, cipher, counterparty_id, type_id, way_of_delivery_id, parent_id FROM letters_baseletter WHERE level == 1')
-        results = cur.fetchall()
-        for number, subj, sign_date, inbound_number, signed_by, contact, receive_date, send_date, cipher, counterparty_id, type_id, way_of_delivery_id, parent_id in results:
-            counterparty = Counterparty.objects.get(pk=counterparty_id)
-            type = LetterType.objects.get(pk=type_id)
-            parent = BaseLetter.objects.get(number=parent_id)
-            if way_of_delivery_id:
-                way_of_delivery = WayOfDelivery.objects.get(pk=way_of_delivery_id)
-                BaseLetter.objects.create(number=number, subj=subj, sign_date=sign_date, inbound_number=inbound_number,
-                                  signed_by=signed_by, contact=contact, receive_date=receive_date, send_date=send_date,
-                                  cipher=cipher, counterparty=counterparty, type=type, way_of_delivery=way_of_delivery,
-                                  parent=parent)
-            else:
-                BaseLetter.objects.create(number=number, subj=subj, sign_date=sign_date, inbound_number=inbound_number,
-                                  signed_by=signed_by, contact=contact, receive_date=receive_date, send_date=send_date,
-                                  cipher=cipher, counterparty=counterparty, type=type, parent=parent)
-                pass
-        context = {'stuff': results, 'message': 'message'}
-        return render(request, template_name='letters/index.html', context=context)
+    qs = Counterparty.objects.filter(type_id=1)
+    for obj in qs:
+        newname = obj.name.replace('администрации', 'Администрация').replace('Федеральной службы', 'Федеральная служба').replace('Администрации Черноморского', 'Администрация Черноморского')
+        if obj.name != newname:
+            print(obj.name)
+            obj.name = newname
+            obj.save()
+    print('\t\t\tDONE')
+    context = {'stuff': [], 'message': 'DONE'}
+    return render(request, template_name='letters/index.html', context=context)
+
+
+
+def rebuld_counterparty(request):
+    Counterparty.objects.rebuild()
+    context = {'stuff': [], 'message': 'DONE'}
+    return render(request, template_name='letters/index.html', context=context)
+
+
+def decap_and_nominative(request):
+    """МЕНЯЕТ ПАДЕЖ И РЕГИСТР У ПЕРВОГО СЛОВА ИМЕНИ (предоплагается, что это фамилия)"""
+
+    endings = (
+        ('ому', 'ий'),
+        ('у', ''),
+        ('у', ''),
+        ('ой', 'а'),
+    )
+    qs = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id__gt=0))
+    for obj in qs:
+        name = obj.name.strip().split()
+        name[0] = name[0].capitalize()
+        for e in endings:
+            name[0] = re.sub(e[0], e[1], name[0])
+        obj.name = ' '.join(name)
+        obj.save()
+    context = {'stuff': [], 'message': 'message'}
+    return render(request, template_name='letters/index.html', context=context)
+
+
+
+def myscript_cut(request):
+    """ВЫЧЛЕНЯЕМ ИЗ ИМЕНИ ЛИЦА ДОЛЖНОСТЬ И ОРГАНИЗАЦИЮ"""
+    qs = Counterparty.objects.filter(type_id=3).filter(name__contains='Руководителю')
+    context = {'stuff': qs, 'message': 'message'}
+    results = []
+    for c in qs:
+        name = copy(c.name)
+        pos = 'Руководитель'
+        pers = ''
+        for x in re.findall(r"\w*\s\w\.\w\.?$", name):
+            pers = x
+        org = name.replace('Руководителю', '').replace(pers, '').strip()
+        results.append((pos, org, pers))
+
+        if not all((org, pers)):
+            continue
+
+        organization = get_org(org)
+        position = get_pos(pos, organization)
+        c.name = pers
+        c.parent = position
+        c.save()
+
+    qs = Counterparty.objects.filter(type_id=3).filter(name__contains='Руководителю')
+
+    context = {'stuff': qs, 'message': 'message'}
+    return render(request, template_name='letters/index.html', context=context)
+
+
+def reduce_pepetitive_people(request):
+    """Ищет Лиц с одинаковыми строковыми представлениями, удаляет всех кроме 1го и перекидывает ему все письма от удаленных"""
+    workdict = {}
+    people = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id__gt=0))
+    for person in people:
+        print(str(person))
+        if not str(person) in workdict:
+            workdict[str(person)] = person
+        else:
+            print('повтор: ', person)
+            letters = BaseLetter.objects.filter(counterparty=person)
+            for letter in letters:
+                letter.counterparty = workdict[str(person)]
+                letter.save()
+            person.delete()
+
+    result = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id__gt=0))
+    context = {'stuff': result, 'message': 'message'}
+    return render(request, template_name='letters/index.html', context=context)
+
+
+
+
+
+def reduce_pepetitive_orgs(request):
+    """Ищет Лиц с одинаковыми строковыми представлениями, удаляет всех кроме 1го и перекидывает ему все письма от удаленных"""
+    workdict = {}
+    orgs = Counterparty.objects.filter(Q(type_id=2))
+    for org in orgs:
+        print(str(org))
+        if not str(org) in workdict:
+            workdict[str(org)] = org
+        else:
+            print('повтор: ', org)
+            letters = BaseLetter.objects.filter(counterparty=org)
+            for letter in letters:
+                letter.counterparty = workdict[str(org)]
+                letter.save()
+                print('\t\t\t', 'letter')
+            descendants = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id=org.pk))
+            for d in descendants:
+                d.parent = workdict[str(org)]
+                d.save()
+                print('\t\t\t', 'desc')
+
+            org.delete()
+
+    context = {'stuff': [], 'message': 'message'}
+    return render(request, template_name='letters/index.html', context=context)
+
+
+
+# def myscript(request):
+#     with sqlite3.connect('old.sqlite3') as conn:
+#         cur = conn.cursor()
+#         cur.execute('SELECT number, subj, sign_date, inbound_number, signed_by, contact, receive_date, send_date, cipher, counterparty_id, type_id, way_of_delivery_id, parent_id FROM letters_baseletter WHERE level == 1')
+#         results = cur.fetchall()
+#         for number, subj, sign_date, inbound_number, signed_by, contact, receive_date, send_date, cipher, counterparty_id, type_id, way_of_delivery_id, parent_id in results:
+#             counterparty = Counterparty.objects.get(pk=counterparty_id)
+#             type = LetterType.objects.get(pk=type_id)
+#             parent = BaseLetter.objects.get(number=parent_id)
+#             if way_of_delivery_id:
+#                 way_of_delivery = WayOfDelivery.objects.get(pk=way_of_delivery_id)
+#                 BaseLetter.objects.create(number=number, subj=subj, sign_date=sign_date, inbound_number=inbound_number,
+#                                   signed_by=signed_by, contact=contact, receive_date=receive_date, send_date=send_date,
+#                                   cipher=cipher, counterparty=counterparty, type=type, way_of_delivery=way_of_delivery,
+#                                   parent=parent)
+#             else:
+#                 BaseLetter.objects.create(number=number, subj=subj, sign_date=sign_date, inbound_number=inbound_number,
+#                                   signed_by=signed_by, contact=contact, receive_date=receive_date, send_date=send_date,
+#                                   cipher=cipher, counterparty=counterparty, type=type, parent=parent)
+#                 pass
+#         context = {'stuff': results, 'message': 'message'}
+#         return render(request, template_name='letters/index.html', context=context)
 
 #
 # def myscript(request):
