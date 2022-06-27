@@ -1,0 +1,37 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+
+{% block after_related_objects %}
+
+
+{% if letters %}
+<link rel="stylesheet" type="text/css" href="{% static "letters/my.css" %}">
+
+
+{% load mptt_tags %}
+
+<fieldset class="module">
+<h2>{{ letters_title }}</h2>
+<br>
+<ul class="treeline">
+    {% recursetree letters %}
+        <li>
+        {% if object_id == node.id %}
+        <span style="font-weight: bolder;">{{ node.get_link_name }}</span>
+        {% else %}
+        {{ node.get_link_name }}
+        {% endif  %}
+            {% if not node.is_leaf_node %}
+                <ul class="children">
+                    {{ children }}
+                </ul>
+            {% endif %}
+        </li>
+    {% endrecursetree %}
+</ul>
+</fieldset>
+{% endif %}
+
+{% endblock %}
+
