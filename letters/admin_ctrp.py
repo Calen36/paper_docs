@@ -34,7 +34,7 @@ class OrganizationInlineFormSet(BaseInlineFormSet):
 class CounterpartyAdmin(AbsMultiCatAdmin):
     list_display = ('get_list_name',)
     save_on_top = True
-    search_fields = ('name', 'parent__name', 'parent__parent__name')
+    search_fields = ('name',)
     # list_per_page = 40
 
     def get_queryset(self, request):

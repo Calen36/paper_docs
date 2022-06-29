@@ -10,6 +10,90 @@ from letters.models import *
 import openpyxl
 
 
+def beautify_name(name):
+    parts = name.split()
+    for i, v in enumerate(parts):
+        if v.isalpha():
+            word = v.capitalize()
+
+            word = re.sub(r'еву\b', 'ев', word)
+            word = re.sub(r'ову\b', 'ов', word)
+            word = re.sub(r'скому\b', 'ский', word)
+            word = re.sub(r'ской\b', 'ская', word)
+            word = re.sub(r'ну\b', 'н', word)
+            word = re.sub(r'евой\b', 'ева', word)
+            word = re.sub(r'овой\b', 'ова', word)
+            word = re.sub(r'еcю\b', 'есь', word)
+
+            parts[i] = word
+    return ' '.join(parts)
+
+
+def myscript(request):
+    procs = ['Прокуратура Западного административного округа г. Краснодара',
+    'Прокуратура Центрального административного округа г. Краснодара',
+    'Прокуратура  Карасунского административного округа г. Краснодара',
+    'Прокуратура  Прикубанского административного округа г. Краснодара',
+    'Прокуратура г. Краснодара',
+    'Прокуратура г. Новороссийска',
+    'Прокуратура г. Сочи - Адлерский район',
+    'Прокуратура г. Сочи - Лазаревский район',
+    'Прокуратура г. Сочи - Центральный район',
+    'Прокуратура г. Сочи - Хостинский район',
+    'Прокуратура г. Сочи',
+    'Прокуратура Абинского района',
+    'Анапская межрайонная прокуратура',
+    'Прокуратура Апшеронского района',
+    'Прокуратура г. Армавира',
+    'Белореченская межрайонная прокуратура',
+    'Прокуратура Белоглинского района',
+    'Прокуратура Брюховецкого района',
+    'Прокуратура Выселковского района',
+    'Прокуратура г. Геленджика',
+    'Прокуратура г. Горячий Ключ',
+    'Прокуратура Гулькевичского района',
+    'Прокуратура Динского района',
+    'Ейская межрайонная прокуратура',
+    'Краснодарская прокуратура по надзору за соблюдением законов в исправительных учреждениях',
+    'Прокуратура Кавказского района',
+    'Прокуратура Калининского района',
+    'Прокуратура Каневского района',
+    'Прокуратура Кореновского района',
+    'Крымская межрайонная прокуратура',
+    'Прокуратура Курганинского района',
+    'Прокуратура Кущевского района',
+    'Прокуратура Красноармейского района',
+    'Прокуратура Крыловского района',
+    'Лабинская межрайонная прокуратура',
+    'Прокуратура Ленинградского района',
+    'Прокуратура Мостовского района',
+    'Прокуратура Новокубанского района',
+    'Прокуратура Новопокровского района',
+    'Прокуратура Отрадненского района',
+    'Прокуратура Павловского района',
+    'Прокуратура Приморско-Ахтарского района',
+    'Славянская межрайонная прокуратура',
+    'Прокуратура Северского района',
+    'Прокуратура Староминского района',
+    'Прокуратура Темрюкского района',
+    'Прокуратура Тимашевского района',
+    'Туапсинская межрайонная прокуратура',
+    'Тихорецкая межрайонная прокуратура',
+    'Прокуратура Тбилисского района',
+    'Прокуратура Успенского района',
+    'Прокуратура Усть-Лабинского района',
+    'Прокуратура Щербиновского района',
+    'Азово-Черноморская межрайонная природоохранная прокуратура',
+    'Сочинская межрайонная природоохранная прокуратура',]
+
+
+    for proc in procs:
+        get_org(proc)
+
+    context = {'stuff': [], 'message': 'DONE'}
+    return render(request, template_name='letters/index.html', context=context)
+
+
 def get_type():
     return LetterType.objects.get(pk=1)
 
@@ -61,7 +145,7 @@ def get_delivery(name):
     return WayOfDelivery.objects.get(name=name)
 
 
-def myscript(request):
+def read_xls(request):
     book = openpyxl.load_workbook('in.xlsx')
     sheet = book.worksheets[1]
     log = []
@@ -121,185 +205,95 @@ def get_geotag(name, parent):
     return GeoTag.objects.get(Q(name=name) & Q(parent=parent))
 
 
-def myscript(request):
-    qs = Counterparty.objects.filter(type_id=1)
-    for obj in qs:
-        newname = obj.name.replace('администрации', 'Администрация').replace('Федеральной службы', 'Федеральная служба').replace('Администрации Черноморского', 'Администрация Черноморского')
-        if obj.name != newname:
-            print(obj.name)
-            obj.name = newname
-            obj.save()
-    print('\t\t\tDONE')
-    context = {'stuff': [], 'message': 'DONE'}
-    return render(request, template_name='letters/index.html', context=context)
-
-
-
 def rebuld_counterparty(request):
     Counterparty.objects.rebuild()
-    context = {'stuff': [], 'message': 'DONE'}
-    return render(request, template_name='letters/index.html', context=context)
-
-
-def decap_and_nominative(request):
-    """МЕНЯЕТ ПАДЕЖ И РЕГИСТР У ПЕРВОГО СЛОВА ИМЕНИ (предоплагается, что это фамилия)"""
-
-    endings = (
-        ('ому', 'ий'),
-        ('у', ''),
-        ('у', ''),
-        ('ой', 'а'),
-    )
-    qs = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id__gt=0))
-    for obj in qs:
-        name = obj.name.strip().split()
-        name[0] = name[0].capitalize()
-        for e in endings:
-            name[0] = re.sub(e[0], e[1], name[0])
-        obj.name = ' '.join(name)
-        obj.save()
-    context = {'stuff': [], 'message': 'message'}
+    context = {'stuff': [], 'message': 'ДЕРЕВО КОНТРАГЕНТОВ ПЕРЕСТРОЕНО'}
     return render(request, template_name='letters/index.html', context=context)
 
 
 
 def myscript_cut(request):
     """ВЫЧЛЕНЯЕМ ИЗ ИМЕНИ ЛИЦА ДОЛЖНОСТЬ И ОРГАНИЗАЦИЮ"""
-    qs = Counterparty.objects.filter(type_id=3).filter(name__contains='Руководителю')
-    context = {'stuff': qs, 'message': 'message'}
+    position_name = 'И.о. прокурора'
+    qs = Counterparty.objects.filter(type_id=3).filter(name__icontains=position_name)
     results = []
     for c in qs:
         name = copy(c.name)
-        pos = 'Руководитель'
+        pos = 'И.О. прокурора'
         pers = ''
         for x in re.findall(r"\w*\s\w\.\w\.?$", name):
             pers = x
-        org = name.replace('Руководителю', '').replace(pers, '').strip()
-        results.append((pos, org, pers))
+        org = 'Прокуратура ' + name.replace(position_name, '').replace(pers, '').strip()
+        results.append((pos, org, beautify_name(pers)))
 
         if not all((org, pers)):
             continue
 
-        organization = get_org(org)
-        position = get_pos(pos, organization)
-        c.name = pers
-        c.parent = position
-        c.save()
+        # organization = get_org(org)
+        # position = get_pos(pos, organization)
+        # c.name = pers
+        # c.parent = position
+        # c.save()
 
-    qs = Counterparty.objects.filter(type_id=3).filter(name__contains='Руководителю')
+    qs = Counterparty.objects.filter(type_id=3).filter(name__icontains=position_name)
 
-    context = {'stuff': qs, 'message': 'message'}
+    context = {'stuff': results, 'message': 'message'}
     return render(request, template_name='letters/index.html', context=context)
 
 
-def reduce_pepetitive_people(request):
-    """Ищет Лиц с одинаковыми строковыми представлениями, удаляет всех кроме 1го и перекидывает ему все письма от удаленных"""
+def reduce_pepetitive_ctrp(request):
+    """Ищет Контрагентов с одинаковыми строковыми представлениями, удаляет всех кроме 1го и перекидывает ему всех потомков от удаленных"""
+    result = ['------------ОРГАНИЗАЦИИ']
+    qs = Counterparty.objects.filter(type_id=1)
     workdict = {}
-    people = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id__gt=0))
-    for person in people:
-        print(str(person))
-        if not str(person) in workdict:
-            workdict[str(person)] = person
+    for ctrp in qs:
+        print('.', end='')
+        if not str(ctrp) in workdict:
+            workdict[str(ctrp)] = ctrp
         else:
-            print('повтор: ', person)
-            letters = BaseLetter.objects.filter(counterparty=person)
+            print('\nповтор: ', ctrp)
+            result.append(ctrp)
+            letters = BaseLetter.objects.filter(counterparty=ctrp)
             for letter in letters:
-                letter.counterparty = workdict[str(person)]
+                letter.counterparty = workdict[str(ctrp)]
                 letter.save()
-            person.delete()
+            ctrp.delete()
 
-    result = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id__gt=0))
-    context = {'stuff': result, 'message': 'message'}
-    return render(request, template_name='letters/index.html', context=context)
-
-
-
-
-
-def reduce_pepetitive_orgs(request):
-    """Ищет Лиц с одинаковыми строковыми представлениями, удаляет всех кроме 1го и перекидывает ему все письма от удаленных"""
+    result.append('-------------ДОЛЖНОСТИ')
+    qs = Counterparty.objects.filter(Q(type_id=2) & Q(parent_id__gt=0))
     workdict = {}
-    orgs = Counterparty.objects.filter(Q(type_id=2))
-    for org in orgs:
-        print(str(org))
-        if not str(org) in workdict:
-            workdict[str(org)] = org
+    for ctrp in qs:
+        print('.', end='')
+        if not str(ctrp) in workdict:
+            workdict[str(ctrp)] = ctrp
         else:
-            print('повтор: ', org)
-            letters = BaseLetter.objects.filter(counterparty=org)
+            print('\nповтор: ', ctrp)
+            result.append(ctrp)
+            letters = BaseLetter.objects.filter(counterparty=ctrp)
             for letter in letters:
-                letter.counterparty = workdict[str(org)]
+                letter.counterparty = workdict[str(ctrp)]
                 letter.save()
-                print('\t\t\t', 'letter')
-            descendants = Counterparty.objects.filter(Q(type_id=3) & Q(parent_id=org.pk))
-            for d in descendants:
-                d.parent = workdict[str(org)]
-                d.save()
-                print('\t\t\t', 'desc')
+            ctrp.delete()
 
-            org.delete()
+    result.append('-------------ЛИЦА')
+    qs = Counterparty.objects.filter(Q(type_id=2) & Q(parent_id__gt=0))
+    workdict = {}
+    for ctrp in qs:
+        print('.', end='')
+        if not str(ctrp) in workdict:
+            workdict[str(ctrp)] = ctrp
+        else:
+            print('\nповтор: ', ctrp)
+            result.append(ctrp)
+            letters = BaseLetter.objects.filter(counterparty=ctrp)
+            for letter in letters:
+                letter.counterparty = workdict[str(ctrp)]
+                letter.save()
+            ctrp.delete()
 
-    context = {'stuff': [], 'message': 'message'}
+
+
+    context = {'stuff': result, 'message': 'СЛИЯНИЕ ЗАПИСЕЙ ДУБЛИРУЮЩИХСЯ КОНТРАГЕНТОВ'}
     return render(request, template_name='letters/index.html', context=context)
 
 
-
-# def myscript(request):
-#     with sqlite3.connect('old.sqlite3') as conn:
-#         cur = conn.cursor()
-#         cur.execute('SELECT number, subj, sign_date, inbound_number, signed_by, contact, receive_date, send_date, cipher, counterparty_id, type_id, way_of_delivery_id, parent_id FROM letters_baseletter WHERE level == 1')
-#         results = cur.fetchall()
-#         for number, subj, sign_date, inbound_number, signed_by, contact, receive_date, send_date, cipher, counterparty_id, type_id, way_of_delivery_id, parent_id in results:
-#             counterparty = Counterparty.objects.get(pk=counterparty_id)
-#             type = LetterType.objects.get(pk=type_id)
-#             parent = BaseLetter.objects.get(number=parent_id)
-#             if way_of_delivery_id:
-#                 way_of_delivery = WayOfDelivery.objects.get(pk=way_of_delivery_id)
-#                 BaseLetter.objects.create(number=number, subj=subj, sign_date=sign_date, inbound_number=inbound_number,
-#                                   signed_by=signed_by, contact=contact, receive_date=receive_date, send_date=send_date,
-#                                   cipher=cipher, counterparty=counterparty, type=type, way_of_delivery=way_of_delivery,
-#                                   parent=parent)
-#             else:
-#                 BaseLetter.objects.create(number=number, subj=subj, sign_date=sign_date, inbound_number=inbound_number,
-#                                   signed_by=signed_by, contact=contact, receive_date=receive_date, send_date=send_date,
-#                                   cipher=cipher, counterparty=counterparty, type=type, parent=parent)
-#                 pass
-#         context = {'stuff': results, 'message': 'message'}
-#         return render(request, template_name='letters/index.html', context=context)
-
-#
-# def myscript(request):
-#     book = openpyxl.load_workbook('settlements.xlsx')
-#     sheet = book.worksheets[0]
-#     results = []
-#     krd = GeoTag.objects.get(name='Краснодарский край')
-#     message = krd
-#     for row in sheet.values:
-#         if not row[0].startswith('ГО'):
-#             if ' СП ' in row[0]:
-#                 setl, raion = row[0][:-3].split(' СП ')
-#                 setl = setl.strip() + ' с.п.'
-#             elif ' ГП ' in row[0]:
-#                 setl, raion = row[0][:-3].split(' ГП ')
-#                 setl = setl.strip() + ' г.п.'
-#             else:
-#                 results.append(row[0])
-#
-#     context = {'stuff': results, 'message': message}
-#     return render(request, template_name='letters/index.html', context=context)
-
-
-
-# def myscript(request):
-#     return None
-#     """ Создание категорий и подкатегорий контрагентов"""
-#     rns = ['Белореченское г.п.', 'Бжедуховское с.п.', 'Великовечненское с.п.', 'Дружненское с.п.', 'Первомайское с.п.', 'Пшехское с.п.', 'Родниковское с.п.', 'Рязанское с.п.', 'Черниговское с.п.', 'Школьненское с.п.', 'Южненское с.п.']
-#
-#     for r in rns:
-#         region = GeoTag.objects.get(name__startswith='Белореченский')
-#
-#         GeoTag.objects.create(name=r, parent=region)
-#
-#     context = {'stuff': GeoTag.objects.all(), 'message': ''}
-#     return render(request, template_name='letters/index.html', context=context)
-#

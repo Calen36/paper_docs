@@ -178,6 +178,12 @@ class LetterTypeAdmin(admin.ModelAdmin):
         return []
 
 
+@admin.register(OutgoingType)
+class OutgoingTypeAdmin(admin.ModelAdmin):
+    def get_actions(self, request):
+        return []
+
+
 class AttachmentInline(admin.TabularInline):
     model = Attachment
     extra = 0
@@ -185,3 +191,5 @@ class AttachmentInline(admin.TabularInline):
     formfield_overrides = {
         models.TextField: {'widget': Textarea(attrs={'rows': 2, 'cols': 100})},
     }
+
+

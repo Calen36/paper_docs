@@ -9,6 +9,7 @@ def get_upload_path(instance, filename):
 
 class BaseLetter(MPTTModel):
     type = models.ForeignKey('LetterType', on_delete=models.CASCADE, blank=True, null=True, )
+    out_type = models.ForeignKey('OutgoingType', on_delete=models.PROTECT, blank=True, null=True, default=1)
     parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name='Ответ на')
     number = models.CharField(max_length=64, unique=True, verbose_name='Номер')
     counterparty = TreeForeignKey('Counterparty', on_delete=models.CASCADE, verbose_name='Контрагент')
@@ -70,14 +71,15 @@ class BaseLetter(MPTTModel):
 
     def save(self, *args, recurse=True, **kwargs):
         """ Применяет некоторые настройки ко всей ветке писем"""
-        print(self.pdf_file)
-
         super(BaseLetter, self).save()
         if recurse:
             family = BaseLetter.objects.get(pk=self.pk).get_family()
             for relative in family:
-                if relative.pk != self.pk and relative.completed != self.completed:
-                    relative.completed = self.completed
+                if relative.pk != self.pk:
+                    if relative.completed != self.completed:
+                        relative.completed = self.completed
+                    if self.out_type:
+                        relative.out_type = OutgoingType.objects.get(pk=self.out_type_id)
                     relative.save(recurse=False)
 
 
@@ -86,8 +88,8 @@ class OutEcoLetter(BaseLetter):
 
     class Meta:
         proxy = True
-        verbose_name = 'Исходящее письмо (экология)'
-        verbose_name_plural = f'       {my_indent}📨 Исходящие (эко)'
+        verbose_name = 'Исходящее письмо'
+        verbose_name_plural = f'       {my_indent}📨 Исходящие'
 
     def save(self, *args, **kwargs):
         self.type = LetterType.objects.get(pk=2)
@@ -103,6 +105,9 @@ class IncomingLetter(BaseLetter):
 
     def save(self, *args, **kwargs):
         self.type = LetterType.objects.get(pk=1)
+        if self.parent:
+            if self.parent.out_type:
+                self.out_type = OutgoingType.objects.get(pk=self.parent.out_type_id)
         super(IncomingLetter, self).save()
 
 
@@ -115,6 +120,9 @@ class OmittedRedirect(BaseLetter):
 
     def save(self, *args, **kwargs):
         self.type = LetterType.objects.get(pk=3)
+        if self.parent:
+            if self.parent.out_type:
+                self.out_type = OutgoingType.objects.get(pk=self.parent.out_type_id)
         super(IncomingLetter, self).save()
 
 

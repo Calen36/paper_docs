@@ -1,3 +1,5 @@
+import re
+
 from django.utils.safestring import mark_safe
 
 from .models_cats import BaseHierarchicalProperty
@@ -71,6 +73,11 @@ class Organization(Counterparty):
     def save(self, *args, **kwargs):
         self.type = CounterpartyType.objects.get(pk=1)
         super(Organization, self).save()
+        if re.findall(r'Прокуратура', self.name, flags=re.I):
+            Position.objects.create(name='Прокурор', parent=self)
+            Position.objects.create(name='И.О. прокурора', parent=self)
+            Position.objects.create(name='1й зам. прокурора', parent=self)
+            Position.objects.create(name='2й зам. прокурора', parent=self)
 
 
 class Position(Counterparty):

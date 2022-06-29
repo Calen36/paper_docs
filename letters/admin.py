@@ -27,7 +27,7 @@ class OutDueFilter(SimpleListFilter):
 
     def get_y_qs(self):
         limitday = (datetime.datetime.today() - datetime.timedelta(days=30)).strftime("%Y-%m-%d")
-        return OutEcoLetter.objects.filter(Q(completed=0) & Q(send_date__lt=limitday) & Q(rght=F('lft') + 1))  # если поле rght == lft+1, то значит текущая нода является лепестком дерева
+        return OutEcoLetter.objects.filter(Q(completed=0) & Q(send_date__lt=limitday) & Q(rght=F('lft') + 1)).select_related('type', 'counterparty')  # если поле rght == lft+1, то значит текущая нода является лепестком дерева
 
     def lookups(self, request, model_admin):
         x = self.get_y_qs().count()
@@ -36,7 +36,6 @@ class OutDueFilter(SimpleListFilter):
         return None
 
     def queryset(self, request, queryset):
-        print(queryset)
         if self.value() == 'y':
             return self.get_y_qs()
 
@@ -51,11 +50,11 @@ class BaseCompletedFilter(SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value() == 'y':
-            result = BaseLetter.objects.filter(completed=1)
+            result = BaseLetter.objects.filter(completed=1).select_related('type', 'counterparty')
             return result
 
         if self.value() == 'n':
-            result = BaseLetter.objects.filter(completed=0)
+            result = BaseLetter.objects.filter(completed=0).select_related('type', 'counterparty')
             return result
 
 
@@ -73,7 +72,37 @@ class BaseYearsFilter(SimpleListFilter):
 
         print(self.value(), type(self.value()))
         if self.value():
-            result = BaseLetter.objects.filter(Q(sign_date__gte=f'{self.value()}-01-01') & Q(sign_date__lte=f'{self.value()}-12-31'))
+            result = BaseLetter.objects.filter(Q(sign_date__gte=f'{self.value()}-01-01') & Q(sign_date__lte=f'{self.value()}-12-31')).select_related('type', 'counterparty')
+            return result
+
+
+class BaseTypeFilter(SimpleListFilter):
+    """ Фильтрует завершенные письма"""
+    title = 'По типам'
+    parameter_name = 'out_type'
+
+    def lookups(self, request, model_admin):
+        qs = OutgoingType.objects.all()
+        return [(t.id, t.name) for t in qs]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            result = BaseLetter.objects.filter(out_type_id=self.value()).select_related('type', 'counterparty')
+            return result
+
+
+class OutTypeFilter(SimpleListFilter):
+    """ Фильтрует завершенные письма"""
+    title = 'По типам'
+    parameter_name = 'out_type'
+
+    def lookups(self, request, model_admin):
+        qs = OutgoingType.objects.all()
+        return [(t.id, t.name) for t in qs]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            result = BaseLetter.objects.filter(Q(type=2) & Q(out_type_id=self.value())).select_related('type', 'counterparty')
             return result
 
 
@@ -87,11 +116,11 @@ class OutCompletedFilter(SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value() == 'y':
-            result = OutEcoLetter.objects.filter(Q(type=2) & Q(completed=1))
+            result = OutEcoLetter.objects.filter(Q(type=2) & Q(completed=1)).select_related('type', 'counterparty')
             return result
 
         if self.value() == 'n':
-            result = OutEcoLetter.objects.filter(Q(type=2) & Q(completed=0))
+            result = OutEcoLetter.objects.filter(Q(type=2) & Q(completed=0)).select_related('type', 'counterparty')
             return result
 
 
@@ -105,11 +134,11 @@ class InCompletedFilter(SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value() == 'y':
-            result = OutEcoLetter.objects.filter(Q(type=1) & Q(completed=1))
+            result = OutEcoLetter.objects.filter(Q(type=1) & Q(completed=1)).select_related('type', 'counterparty')
             return result
 
         if self.value() == 'n':
-            result = OutEcoLetter.objects.filter(Q(type=1) & Q(completed=0))
+            result = OutEcoLetter.objects.filter(Q(type=1) & Q(completed=0)).select_related('type', 'counterparty')
             return result
 
 
@@ -119,7 +148,7 @@ class OutInactionFilter(SimpleListFilter):
     parameter_name = 'inaction'
 
     def get_y_qs(self):
-        return BaseLetter.objects.filter(Q(type=2) & Q(inaction=True))
+        return BaseLetter.objects.filter(Q(type=2) & Q(inaction=True)).select_related('type', 'counterparty')
 
     def lookups(self, request, model_admin):
         x = self.get_y_qs().count()
@@ -177,7 +206,7 @@ class AbstractLetterAdmin(MPTTModelAdmin):
 class BaseLetterAdmin(AbstractLetterAdmin):
 
     # list_display = ("type", "number", "sign_date", "counterparty", "subj")
-    list_filter = (BaseCompletedFilter, OutInactionFilter, OutDueFilter, BaseYearsFilter, ('sign_date', DateRangeFilter))
+    list_filter = (BaseTypeFilter, BaseCompletedFilter, OutInactionFilter, OutDueFilter, BaseYearsFilter, ('sign_date', DateRangeFilter),)
 
     def has_add_permission(self, request):
         return False
@@ -195,7 +224,7 @@ class OutEcoLetterAdmin(AbstractLetterAdmin):
     mptt_level_indent = 0
     # form = OutEcoLetterAdminForm
     autocomplete_fields = AbstractLetterAdmin.autocomplete_fields + ('executor',)
-    list_filter = (OutCompletedFilter, OutInactionFilter, OutDueFilter, ('sign_date', DateRangeFilter))
+    list_filter = (OutTypeFilter, OutCompletedFilter, OutInactionFilter, OutDueFilter, ('sign_date', DateRangeFilter))
 
     def get_queryset(self, request):
         return BaseLetter.objects.filter(type=2).select_related('type', 'counterparty')
@@ -213,7 +242,7 @@ class IncomingLetterAdmin(AbstractLetterAdmin):
         return BaseLetter.objects.filter(type=1).select_related('type', 'counterparty')
 
     def get_exclude(self, request, obj=None):
-        return 'type', 'executor', 'pagemaker_file', 'inbound_number', 'inaction', 'send_date',
+        return 'type', 'out_type', 'executor', 'pagemaker_file', 'inbound_number', 'inaction', 'send_date',
 
 
 @admin.register(OmittedRedirect)
@@ -225,5 +254,5 @@ class OmittedRedirectAdmin(AbstractLetterAdmin):
         return BaseLetter.objects.filter(type=3).select_related('type', 'counterparty')
 
     def get_exclude(self, request, obj=None):
-        return 'type', 'subj', 'sign_date', 'way_of_delivery', 'executor', 'inbound_number', 'outgoing_number', 'signed_by', 'contact', 'receive_date', 'send_date', 'thematics', 'geotag', 'cad_num', 'forestry', 'waterobj', 'cipher', 'tiff_file', 'pdf_file', 'pagemaker_file', 'completed', 'inaction',
+        return 'type', 'out_type', 'subj', 'sign_date', 'way_of_delivery', 'executor', 'inbound_number', 'outgoing_number', 'signed_by', 'contact', 'receive_date', 'send_date', 'thematics', 'geotag', 'cad_num', 'forestry', 'waterobj', 'cipher', 'tiff_file', 'pdf_file', 'pagemaker_file', 'completed', 'inaction',
 

@@ -3,6 +3,17 @@ from django.utils.safestring import mark_safe
 from mptt.models import MPTTModel, TreeForeignKey, TreeManyToManyField, TreeManager
 
 
+class OutgoingType(models.Model):
+    name = models.CharField(max_length=64, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Тип исходящего письма'
+        verbose_name_plural = 'Типы исходящих писем'
+
+
 class WayOfDelivery(models.Model):
     name = models.CharField(max_length=64, unique=True)
 

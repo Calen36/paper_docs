@@ -24,7 +24,7 @@ from ewnc_docs import settings
 
 
 urlpatterns = [
-    path('exec', myscript),
+    path('exec', rebuld_counterparty),
     path('admin/letters/baseletter/<path:tail>', get_extended_letter_url),
     path('admin/letters/counterparty/<path:tail>', get_extended_ctrp_url),
     path('admin/', admin.site.urls),
