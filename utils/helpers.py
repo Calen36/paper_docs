@@ -9,6 +9,9 @@ from django.shortcuts import render, HttpResponse, redirect
 from letters.models import *
 import openpyxl
 
+import os
+module_dir = os.path.dirname(__file__)  # get current directory
+
 
 def beautify_name(name):
     parts = name.split()
@@ -201,6 +204,7 @@ def get_pos(name, org):
 def get_geotag(name, parent):
     name = name.strip()
     if not GeoTag.objects.filter(Q(name=name) & Q(parent=parent)).exists():
+        print('СОЗДАЕТСЯ ГЕОТЕГ:', name)
         GeoTag.objects.create(name=name, parent=parent)
     return GeoTag.objects.get(Q(name=name) & Q(parent=parent))
 
@@ -291,9 +295,23 @@ def reduce_pepetitive_ctrp(request):
                 letter.save()
             ctrp.delete()
 
-
-
     context = {'stuff': result, 'message': 'СЛИЯНИЕ ЗАПИСЕЙ ДУБЛИРУЮЩИХСЯ КОНТРАГЕНТОВ'}
     return render(request, template_name='letters/index.html', context=context)
 
 
+def myscript(request):
+    file_path = os.path.join(module_dir, 'results.txt')
+
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    krai = get_geotag(name='Краснодарский край', parent=None)
+    for l in lines:
+        pos, rn = l.split('__')
+
+        raion = get_geotag(name=rn+' район', parent=krai)
+        settlement = get_geotag(name=pos, parent=raion)
+        print(pos, rn)
+
+    context = {'stuff': lines, 'message': 'АЫ'}
+    return render(request, template_name='letters/index.html', context=context)

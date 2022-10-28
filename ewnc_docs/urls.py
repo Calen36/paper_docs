@@ -14,25 +14,19 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.shortcuts import HttpResponse, redirect
+from django.shortcuts import redirect
 from django.urls import path, include
 from django.conf.urls.static import static
 
-import letters.admin
-from letters.views import *
 from ewnc_docs import settings
 
 
 urlpatterns = [
-    path('exec', rebuld_counterparty),
-    path('admin/letters/baseletter/<path:tail>', get_extended_letter_url),
-    path('admin/letters/counterparty/<path:tail>', get_extended_ctrp_url),
+    path('admin/letters', include('letters.urls')),
     path('admin/', admin.site.urls),
     path('', lambda _: redirect("admin/")),
     path('__debug__/', include('debug_toolbar.urls')),
-
 ]
-
 
 if settings.DEBUG:
     urlpatterns = [

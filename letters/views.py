@@ -1,5 +1,4 @@
-from .scripts import *
-from django.template import loader
+from utils.helpers import *
 from django.shortcuts import get_object_or_404
 
 
